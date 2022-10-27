@@ -25,7 +25,20 @@ import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
-import AccountPage from "./Account";
+import {
+  Portal,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverHeader,
+  PopoverBody,
+  PopoverFooter,
+  PopoverArrow,
+  PopoverCloseButton,
+} from "@chakra-ui/react";
+import Modal from "react-bootstrap/Modal";
+import { fetchJson } from "ethers/lib/utils";
+import Table from "react-bootstrap/Table";
 
 export default function Home() {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -38,6 +51,11 @@ export default function Home() {
   const [signedMessage, setSignedMessage] = useState("");
   const [verified, setVerified] = useState();
 
+  const [productJson, setProductJson] = useState([]);
+  const [orderJson, setOrderJson] = useState([]);
+  const [show, setShow] = useState(false);
+  const [userOrderJson, setUserOrderJson] = useState([]);
+
   const handleNetwork = (e) => {
     const id = e.target.value;
     setNetwork(Number(id));
@@ -46,6 +64,12 @@ export default function Home() {
   const handleInput = (e) => {
     const msg = e.target.value;
     setMessage(msg);
+  };
+
+  const fetchProducts = () => {
+    fetch("http://localhost:3000/Products")
+      .then((response) => response.json())
+      .then((data) => setProductJson(data));
   };
 
   const switchNetwork = async () => {
@@ -94,6 +118,21 @@ export default function Home() {
       setError(error);
     }
   };
+  const handleClose = () => {setShow(false)
+    setUserOrderJson([])
+  };
+
+  const modalHelper = () => {
+    setShow(true);
+
+    fetch("http://localhost:3000/Orders")
+      .then((response) => response.json())
+      .then((data) => setOrderJson(data));
+
+    orderJson.map((order) =>
+      order.aactId === account ? userOrderJson.push(order) : null
+    );
+  };
 
   const refreshState = () => {
     window.localStorage.setItem("provider", undefined);
@@ -108,14 +147,13 @@ export default function Home() {
     deactivate();
   };
 
-
   useEffect(() => {
     const provider = window.localStorage.getItem("provider");
     if (provider) activate(connectors[provider]);
+    fetchProducts();
   }, []);
 
   return (
-    
     <>
       <>
         <Navbar bg="dark" variant="dark">
@@ -137,10 +175,131 @@ export default function Home() {
               </Text>
             </Navbar.Brand>
             <Nav className="me-auto">
-              <Nav.Link href="#home">Home</Nav.Link>
-              <Nav.Link href="#features">Features</Nav.Link>
-              <Nav.Link href="/account">Account</Nav.Link>
+              {!active ? (
+                <br />
+              ) : (
+                <Nav.Link
+                  onClick={() => {
+                    modalHelper();
+                  }}
+                >
+                  My Orders
+                </Nav.Link>
+              )}
             </Nav>
+            <HStack>
+              {!active ? (
+                <br />
+              ) : (
+                <Popover>
+                  <PopoverTrigger>
+                    <Button>Account</Button>
+                  </PopoverTrigger>
+                  <Portal>
+                    <PopoverContent>
+                      <PopoverArrow />
+                      <PopoverHeader>{account}</PopoverHeader>
+                      <PopoverCloseButton />
+                      <PopoverBody>
+                        {active && (
+                          <HStack
+                            justifyContent="flex-start"
+                            alignItems="flex-start"
+                          >
+                            <Box
+                              maxW="sm"
+                              borderWidth="1px"
+                              borderRadius="lg"
+                              overflow="hidden"
+                              padding="10px"
+                            >
+                              <VStack>
+                                <Button
+                                  onClick={switchNetwork}
+                                  isDisabled={!network}
+                                >
+                                  Switch Network
+                                </Button>
+                                <Select
+                                  placeholder="Select network"
+                                  onChange={handleNetwork}
+                                >
+                                  <option value="3">Ropsten</option>
+                                  <option value="4">Rinkeby</option>
+                                  <option value="42">Kovan</option>
+                                  <option value="1666600000">Harmony</option>
+                                  <option value="42220">Celo</option>
+                                </Select>
+                              </VStack>
+                            </Box>
+                            <Box
+                              maxW="sm"
+                              borderWidth="1px"
+                              borderRadius="lg"
+                              overflow="hidden"
+                              padding="10px"
+                            >
+                              <VStack>
+                                <Button
+                                  onClick={signMessage}
+                                  isDisabled={!message}
+                                >
+                                  Sign Message
+                                </Button>
+                                <Input
+                                  placeholder="Set Message"
+                                  maxLength={20}
+                                  onChange={handleInput}
+                                  w="140px"
+                                />
+                                {signature ? (
+                                  <Tooltip label={signature} placement="bottom">
+                                    <Text>{`Signature: ${truncateAddress(
+                                      signature
+                                    )}`}</Text>
+                                  </Tooltip>
+                                ) : null}
+                              </VStack>
+                            </Box>
+                            <Box
+                              maxW="sm"
+                              borderWidth="1px"
+                              borderRadius="lg"
+                              overflow="hidden"
+                              padding="10px"
+                            >
+                              <VStack>
+                                <Button
+                                  onClick={verifyMessage}
+                                  isDisabled={!signature}
+                                >
+                                  Verify Message
+                                </Button>
+                                {verified !== undefined ? (
+                                  verified === true ? (
+                                    <VStack>
+                                      <CheckCircleIcon color="green" />
+                                      <Text>Signature Verified!</Text>
+                                    </VStack>
+                                  ) : (
+                                    <VStack>
+                                      <WarningIcon color="red" />
+                                      <Text>Signature Denied!</Text>
+                                    </VStack>
+                                  )
+                                ) : null}
+                              </VStack>
+                            </Box>
+                          </HStack>
+                        )}
+                      </PopoverBody>
+                      <PopoverFooter></PopoverFooter>
+                    </PopoverContent>
+                  </Portal>
+                </Popover>
+              )}
+            </HStack>
+            <br />
             <HStack>
               {!active ? (
                 <Button onClick={onOpen}>Connect Wallet</Button>
@@ -153,10 +312,7 @@ export default function Home() {
       </>
       <MainCarousel />
       <VStack justifyContent="center" alignItems="center">
-        <HStack marginBottom="10px">
-         
-        </HStack>
-
+        <HStack marginBottom="10px"></HStack>
         <VStack justifyContent="center" alignItems="center" padding="10px 0">
           <HStack>
             <Text>{`Connection Status: `}</Text>
@@ -172,107 +328,53 @@ export default function Home() {
           </Tooltip>
           <Text>{`Network ID: ${chainId ? chainId : "No Network"}`}</Text>
         </VStack>
-        {active && (
-          <HStack justifyContent="flex-start" alignItems="flex-start">
-            <Box
-              maxW="sm"
-              borderWidth="1px"
-              borderRadius="lg"
-              overflow="hidden"
-              padding="10px"
-            >
-              <VStack>
-                <Button onClick={switchNetwork} isDisabled={!network}>
-                  Switch Network
-                </Button>
-                <Select placeholder="Select network" onChange={handleNetwork}>
-                  <option value="3">Ropsten</option>
-                  <option value="4">Rinkeby</option>
-                  <option value="42">Kovan</option>
-                  <option value="1666600000">Harmony</option>
-                  <option value="42220">Celo</option>
-                </Select>
-              </VStack>
-            </Box>
-            <Box
-              maxW="sm"
-              borderWidth="1px"
-              borderRadius="lg"
-              overflow="hidden"
-              padding="10px"
-            >
-              <VStack>
-                <Button onClick={signMessage} isDisabled={!message}>
-                  Sign Message
-                </Button>
-                <Input
-                  placeholder="Set Message"
-                  maxLength={20}
-                  onChange={handleInput}
-                  w="140px"
-                />
-                {signature ? (
-                  <Tooltip label={signature} placement="bottom">
-                    <Text>{`Signature: ${truncateAddress(signature)}`}</Text>
-                  </Tooltip>
-                ) : null}
-              </VStack>
-            </Box>
-            <Box
-              maxW="sm"
-              borderWidth="1px"
-              borderRadius="lg"
-              overflow="hidden"
-              padding="10px"
-            >
-              <VStack>
-                <Button onClick={verifyMessage} isDisabled={!signature}>
-                  Verify Message
-                </Button>
-                {verified !== undefined ? (
-                  verified === true ? (
-                    <VStack>
-                      <CheckCircleIcon color="green" />
-                      <Text>Signature Verified!</Text>
-                    </VStack>
-                  ) : (
-                    <VStack>
-                      <WarningIcon color="red" />
-                      <Text>Signature Denied!</Text>
-                    </VStack>
-                  )
-                ) : null}
-              </VStack>
-            </Box>
-          </HStack>
-        )}
+
         <Text>{error ? error.message : null}</Text>
         <SelectWalletModal isOpen={isOpen} closeModal={onClose} />
         <Container>
           <Row>
-            <Col>
-              <ProductCard />
-            </Col>
-            <Col>
-              <ProductCard />
-            </Col>
-            <Col>
-              <ProductCard />
-            </Col>
-          </Row>
-          <Row>
-            <Col>
-              <ProductCard />
-            </Col>
-            <Col>
-              <ProductCard />
-            </Col>
-            <Col>
-              <ProductCard />
-            </Col>
+            {productJson.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </Row>
         </Container>
       </VStack>
+      <>
+        {" "}
+        <Modal size="lg" show={show} onHide={handleClose}>
+          <Modal.Header closeButton>
+            <Modal.Title>Orders</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Table striped bordered hover>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>First Name</th>
+                  <th>Last Name</th>
+                </tr>
+              </thead>
+              {userOrderJson.map((order) => (
+                <tbody>
+                  <tr>
+                    <td>{order.id}</td>
+                    <td>{order.aactId}</td>
+                    <td>{order.productid}</td>
+                  </tr>
+                </tbody>
+              ))}
+            </Table>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={handleClose}>
+              Close
+            </Button>
+            <Button variant="primary" onClick={handleClose}>
+              Save Changes
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      </>
     </>
   );
 }

@@ -1,7 +1,33 @@
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
+import { useWeb3React } from "@web3-react/core";
+import Modal from 'react-bootstrap/Modal';
+import { useEffect, useState } from "react";
 
-export default function ProductCard() {
+
+export default function ProductCard(product) {
+  const { library, chainId, account, activate, deactivate, active } =
+    useWeb3React();
+
+    const [show, setShow] = useState(false);
+
+    const handleClose = () => setShow(false);
+    const handleShow = () => setShow(true);
+
+    const handleBuy=()=>{
+      setShow(false)  
+      const rawResponse = fetch('http://localhost:3000/Orders', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({productid: product.product.id, aactId: account})
+    });
+     
+    }
+  
+
   return (
     <>
     <Card style={{ width: "18rem" }}>
@@ -13,16 +39,36 @@ export default function ProductCard() {
       />
       <Card.Img
         variant="top"
-        src="https://media-cdn.tripadvisor.com/media/photo-p/11/a3/c2/a7/photo1jpg.jpg"
+        src={product.product.image}
       />
       <Card.Body>
-        <Card.Title>Card Title</Card.Title>
+        <Card.Title>{product.product.title}</Card.Title>
         <Card.Text>
-          Some quick example text to build on the card title and make up the
-          bulk of the card's content.
+          {product.product.price}
         </Card.Text>
-        <Button variant="success">Buy This</Button>
+        {!active ? (
+                <Button >Log in to buy</Button>
+              ) : (
+                <Button onClick={handleShow} variant="success">Buy This</Button>
+              )}
+        
       </Card.Body>
+      <>
+      <Modal show={show} onHide={handleClose}>
+        <Modal.Header closeButton>
+          <Modal.Title>Modal heading</Modal.Title>
+        </Modal.Header>
+        <Modal.Body> `Buy {product.product.title} for ${product.product.price}` </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleBuy}>
+            Buy Now
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
     </Card>
     <br/>
     </>
